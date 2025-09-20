@@ -62,3 +62,6 @@ def smoothing_median(image: np.ndarray) -> np.ndarray:
     median blur → takes the median of window, good for salt pepper noise
     """
     return cv2.medianBlur(image, 15)
+
+
+
