@@ -47,7 +47,7 @@ def hsv_manual(image: np.ndarray) -> np.ndarray:
     out = np.empty((h, w, 3), dtype=np.uint8)
 
     # =========================
-    # Mini example (concept):
+    # 
     # One pixel [B,G,R] = [0, 255, 0]  (pure green)
     #   b=0, g=1, r=0
     #   V=max=1, m=min=0, C=1
