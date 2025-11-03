@@ -3,6 +3,7 @@ import sys
 
 
 def run_script(script_name):
+
     print(f"\n{'=' * 60}")
     print(f"Running {script_name}...")
     print('=' * 60)
@@ -42,8 +43,13 @@ def main():
             return
 
     print("\n" + "=" * 60)
-    print("successfully!")
+    print("All tasks completed successfully!")
     print("=" * 60)
+    print("\nGenerated files:")
+    print("  1. harris.png  - Harris corner detection (Page 1 of PDF)")
+    print("  2. aligned.png - Aligned image (Page 2 of PDF)")
+    print("  3. matches.png - Feature matches (Page 3 of PDF)")
+    print("\nNext step: Combine these images into a PDF for submission.")
 
 
 if __name__ == "__main__":

@@ -71,6 +71,8 @@ def find_and_draw_matches_orb(image1, image2, max_features=1500, good_match_perc
 
 if __name__ == "__main__":
     print("Running Feature Matching...")
+
+    # Load images
     image1 = cv2.imread('align_this.jpg')
     image2 = cv2.imread('reference_img.png')
 
@@ -81,20 +83,15 @@ if __name__ == "__main__":
         print("Error: Could not load reference_img.png")
         exit(1)
 
-    method = 'SIFT'
+    method = 'ORB'
 
     if method == 'SIFT':
-        print("\nUsing SIFT for feature matching...")
         matches_img, matches_list = find_and_draw_matches_sift(image1, image2,
-                                                               max_features=10,
-                                                               good_match_percent=0.7)
-    else:  # ORB
-        print("\nUsing ORB for feature matching...")
+                                                               max_features=4000,
+                                                               good_match_percent=0.15)
+    else:
         matches_img, matches_list = find_and_draw_matches_orb(image1, image2,
-                                                              max_features=1500,
-                                                              good_match_percent=0.15)
+                                                              max_features=5000,
+                                                              good_match_percent=0.20)
 
-    # Save result
     cv2.imwrite('matches.png', matches_img)
-
-    print(f"Feature matching completed using {method}!")

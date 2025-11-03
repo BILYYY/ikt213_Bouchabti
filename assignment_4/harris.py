@@ -23,11 +23,15 @@ def harris_corner_detection(reference_image):
 
 if __name__ == "__main__":
     print("Running Harris Corner Detection...")
+
+    # Load reference image
     reference_img = cv2.imread('reference_img.png')
 
     if reference_img is None:
         print("Error: Could not load reference_img.png")
         exit(1)
+
+    # Perform Harris corner detection
     harris_result = harris_corner_detection(reference_img)
 
     # Save result

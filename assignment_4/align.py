@@ -83,6 +83,8 @@ def align_images_orb(image_to_align, reference_image, max_features=1500, good_ma
 
 if __name__ == "__main__":
     print("Running Image Alignment...")
+
+    # Load images
     reference_img = cv2.imread('reference_img.png')
     align_this_img = cv2.imread('align_this.jpg')
 
@@ -93,7 +95,10 @@ if __name__ == "__main__":
         print("Error: Could not load align_this.jpg")
         exit(1)
 
-    method = 'ORB'
+    # Choose method: 'SIFT' or 'ORB'
+    # Note: Use ORB for this assignment as SIFT may not find enough matches
+    # between images with very different perspectives/backgrounds
+    method = 'ORB'  # Change to 'SIFT' if needed
 
     if method == 'SIFT':
         print("Using SIFT for alignment...")
