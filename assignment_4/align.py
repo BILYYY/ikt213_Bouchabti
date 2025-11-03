@@ -1,120 +1,51 @@
 ﻿import cv2
 import numpy as np
 
+def align_images_orb(image_to_align, reference_image, max_features=1500, good_match_precent=0.15):
+    g1 = cv2.cvtColor(image_to_align, cv2.COLOR_BGR2GRAY)
+    g2 = cv2.cvtColor(reference_image, cv2.COLOR_BGR2GRAY)
 
-def align_images_sift(image_to_align, reference_image, max_features=10, good_match_percent=0.7):
-    im1_gray = cv2.cvtColor(image_to_align, cv2.COLOR_BGR2GRAY)
-    im2_gray = cv2.cvtColor(reference_image, cv2.COLOR_BGR2GRAY)
+    orb = cv2.ORB_create(nfeatures=max_features)
+    kp1, des1 = orb.detectAndCompute(g1, None)
+    kp2, des2 = orb.detectAndCompute(g2, None)
+    if des1 is None or des2 is None:
+        raise SystemExit(1)
 
-    sift = cv2.SIFT_create(max_features)
-    keypoints1, descriptors1 = sift.detectAndCompute(im1_gray, None)
-    keypoints2, descriptors2 = sift.detectAndCompute(im2_gray, None)
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    matches = bf.match(des1, des2)
+    matches = sorted(matches, key=lambda x: x.distance)
 
-    FLANN_INDEX_KDTREE = 1
-    index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
-    search_params = dict(checks=50)
+    k = max(8, int(len(matches) * good_match_precent))
+    matches = matches[:k]
+    if len(matches) < 8:
+        raise SystemExit(1)
 
-    flann = cv2.FlannBasedMatcher(index_params, search_params)
-    matches = flann.knnMatch(descriptors1, descriptors2, k=2)
+    pts1 = np.float32([kp1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
+    pts2 = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
 
-    good_matches = []
-    for m, n in matches:
-        if m.distance < 0.7 * n.distance:
-            good_matches.append(m)
+    H, mask = cv2.findHomography(pts1, pts2, cv2.RANSAC, 3.0)
+    if H is None or mask is None or mask.sum() < 6:
+        raise SystemExit(1)
 
-    good_matches = sorted(good_matches, key=lambda x: x.distance, reverse=False)
+    h, w = reference_image.shape[:2]
+    aligned = cv2.warpPerspective(image_to_align, H, (w, h))
 
-    num_good_matches = int(len(good_matches) * good_match_percent)
-    good_matches = good_matches[:num_good_matches]
+    inliers = [m for m, inl in zip(matches, mask.ravel().tolist()) if inl]
+    non_inliers = [m for m, inl in zip(matches, mask.ravel().tolist()) if not inl]
+    extra = non_inliers[:min(20, len(non_inliers))]
+    vis = inliers + extra
 
-    matches_image = cv2.drawMatches(image_to_align, keypoints1, reference_image,
-                                    keypoints2, good_matches, None,
-                                    flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-
-    points1 = np.zeros((len(good_matches), 2), dtype=np.float32)
-    points2 = np.zeros((len(good_matches), 2), dtype=np.float32)
-
-    for i, match in enumerate(good_matches):
-        points1[i, :] = keypoints1[match.queryIdx].pt
-        points2[i, :] = keypoints2[match.trainIdx].pt
-
-    h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
-
-    height, width, channels = reference_image.shape
-    aligned_image = cv2.warpPerspective(image_to_align, h, (width, height))
-
-    return aligned_image, matches_image
-
-
-def align_images_orb(image_to_align, reference_image, max_features=1500, good_match_percent=0.15):
-    im1_gray = cv2.cvtColor(image_to_align, cv2.COLOR_BGR2GRAY)
-    im2_gray = cv2.cvtColor(reference_image, cv2.COLOR_BGR2GRAY)
-
-    orb = cv2.ORB_create(max_features)
-    keypoints1, descriptors1 = orb.detectAndCompute(im1_gray, None)
-    keypoints2, descriptors2 = orb.detectAndCompute(im2_gray, None)
-
-    matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
-    matches = matcher.match(descriptors1, descriptors2, None)
-
-    matches = sorted(matches, key=lambda x: x.distance, reverse=False)
-
-    num_good_matches = int(len(matches) * good_match_percent)
-    matches = matches[:num_good_matches]
-
-    matches_image = cv2.drawMatches(image_to_align, keypoints1, reference_image,
-                                    keypoints2, matches, None,
-                                    flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-
-    points1 = np.zeros((len(matches), 2), dtype=np.float32)
-    points2 = np.zeros((len(matches), 2), dtype=np.float32)
-
-    for i, match in enumerate(matches):
-        points1[i, :] = keypoints1[match.queryIdx].pt
-        points2[i, :] = keypoints2[match.trainIdx].pt
-
-    h, mask = cv2.findHomography(points1, points2, cv2.RANSAC, 5.0)
-
-    height, width, channels = reference_image.shape
-    aligned_image = cv2.warpPerspective(image_to_align, h, (width, height))
-
-    return aligned_image, matches_image
-
+    matches_img = cv2.drawMatches(
+        image_to_align, kp1, reference_image, kp2,
+        vis, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
+    )
+    return aligned, matches_img
 
 if __name__ == "__main__":
-    print("Running Image Alignment...")
-
-    # Load images
-    reference_img = cv2.imread('reference_img.png')
-    align_this_img = cv2.imread('align_this.jpg')
-
-    if reference_img is None:
-        print("Error: Could not load reference_img.png")
-        exit(1)
-    if align_this_img is None:
-        print("Error: Could not load align_this.jpg")
-        exit(1)
-
-    # Choose method: 'SIFT' or 'ORB'
-    # Note: Use ORB for this assignment as SIFT may not find enough matches
-    # between images with very different perspectives/backgrounds
-    method = 'ORB'  # Change to 'SIFT' if needed
-
-    if method == 'SIFT':
-        print("Using SIFT for alignment...")
-        aligned, matches_img = align_images_sift(align_this_img, reference_img,
-                                                 max_features=5000,
-                                                 good_match_percent=0.15)
-    else:
-        print("Using ORB for alignment...")
-        aligned, matches_img = align_images_orb(align_this_img, reference_img,
-                                                max_features=5000,
-                                                good_match_percent=0.20)
-
-    # Save results
-    cv2.imwrite('aligned.png', aligned)
-    cv2.imwrite('matches.png', matches_img)
-
-    print("Saved: aligned.png")
-    print("Saved: matches.png")
-    print(f"Image alignment completed using {method}!")
+    img1 = cv2.imread("align_this.jpg")
+    img2 = cv2.imread("reference_img.png")
+    if img1 is None or img2 is None:
+        raise SystemExit(1)
+    aligned, matches = align_images_orb(img1, img2, 1500, 0.15)
+    cv2.imwrite("aligned.png", aligned)
+    cv2.imwrite("matches.png", matches)
